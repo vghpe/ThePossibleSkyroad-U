@@ -7,6 +7,7 @@ public class UIManager : MonoBehaviour
     [Header("UI Panels")]
     [SerializeField] private GameObject mainMenuPanel;
     [SerializeField] private GameObject pausePanel;
+    [SerializeField] private GameObject hudPanel; // The new HUD panel
     //[SerializeField] private Text attemptsTextLegacy;
     [SerializeField] private TextMeshProUGUI attemptsText;
 
@@ -15,6 +16,7 @@ public class UIManager : MonoBehaviour
         // Hide all panels by default
         if (mainMenuPanel != null) mainMenuPanel.SetActive(false);
         if (pausePanel != null) pausePanel.SetActive(false);
+        if (hudPanel != null) hudPanel.SetActive(false);
 
         
         Debug.Log("Hid both panels");
@@ -26,6 +28,9 @@ public class UIManager : MonoBehaviour
         {
             case GameState.MainMenu:
                 if (mainMenuPanel != null) mainMenuPanel.SetActive(true);
+                break;
+            case GameState.Playing:
+                if (hudPanel != null) hudPanel.SetActive(true);
                 break;
             case GameState.Paused:
                 if (pausePanel != null) pausePanel.SetActive(true);
