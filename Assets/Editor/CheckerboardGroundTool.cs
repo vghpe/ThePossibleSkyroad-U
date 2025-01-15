@@ -42,6 +42,14 @@ public class CheckerboardGroundTool : EditorWindow
         MeshRenderer meshRenderer = currentGround.AddComponent<MeshRenderer>();
 
         Mesh mesh = new Mesh();
+        // (Mesh generation code remains the same)
+
+        mesh.RecalculateNormals();
+        meshFilter.mesh = mesh;
+
+        // Add MeshCollider and assign the mesh
+        MeshCollider meshCollider = currentGround.AddComponent<MeshCollider>();
+        meshCollider.sharedMesh = mesh;
 
         // Generate vertices and UVs
         Vector3[] vertices = new Vector3[(width + 1) * (depth + 1)];
@@ -111,6 +119,9 @@ public class CheckerboardGroundTool : EditorWindow
         // Optional: reposition so that the "bottom" is at z=0 if you need that.
         // Currently we center the ground at (0,0). If you prefer the plane’s bottom edge at z=0, you can do:
         // currentGround.transform.position = new Vector3(0, 0, depth * tileSize / 2f);
+        
+        // Assign tag to ground
+        currentGround.tag = "Ground";
     }
 
     private void ClearGround()

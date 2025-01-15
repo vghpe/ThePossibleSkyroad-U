@@ -4,17 +4,13 @@ public class PlayerController : MonoBehaviour
 {
     [SerializeField] private float forwardSpeed = 5f;
     [SerializeField] private float jumpForce = 5f;
-    [SerializeField] private float rotationSpeed = 360f; // Degrees per second for the visual effect
 
     private Rigidbody rb;
-    private Transform boxTransform;
     private bool isJumping = false;
-    private float rotationProgress = 0f;
 
     private void Awake()
     {
         rb = GetComponent<Rigidbody>();
-        boxTransform = transform.GetChild(0);
     }
 
     private void Update()
@@ -31,9 +27,7 @@ public class PlayerController : MonoBehaviour
                 // Trigger jump physics
                 rb.linearVelocity = new Vector3(rb.linearVelocity.x, jumpForce, rb.linearVelocity.z);
 
-                // Start visual rotation effect
                 isJumping = true;
-                rotationProgress = 0f;
             }
 
             // Debug test: Press K to simulate death
@@ -42,32 +36,7 @@ public class PlayerController : MonoBehaviour
                 GameManager.Instance.OnPlayerDeath();
             }
         }
-
-        // Handle rotation effect during jump
-        if (isJumping)
-        {
-            RotateBoxForward();
-        }
-    }
-
-    private void RotateBoxForward()
-    {
-        // Calculate rotation increment
-        float rotationAmount = rotationSpeed * Time.deltaTime;
-        rotationProgress += rotationAmount;
-
-        // Rotate the box around its local X axis
-        boxTransform.Rotate(rotationAmount, 0, 0, Space.Self);
-
-        // Stop rotation after 180 degrees
-        if (rotationProgress >= 180f)
-        {
-            isJumping = false;
-            rotationProgress = 0f;
-
-            // Snap to exact 180 degrees to avoid precision errors
-            boxTransform.localRotation = Quaternion.Euler(180f, 0, 0);
-        }
+        Debug.Log(isJumping);
     }
 
     public void ResetPlayer()
@@ -77,21 +46,35 @@ public class PlayerController : MonoBehaviour
         transform.rotation = Quaternion.identity;
         rb.linearVelocity = Vector3.zero;
         rb.angularVelocity = Vector3.zero;
-
-        // Reset box rotation
-        if (boxTransform != null)
-        {
-            boxTransform.localRotation = Quaternion.identity;
-        }
     }
 
     // Example collision detection for future
     private void OnCollisionEnter(Collision collision)
     {
-        // If we collide with something lethal (spike), call death
+        // If it's a platform
+        if (collision.collider.CompareTag("Platform"))
+        {
+            // Check each contact point
+            foreach (ContactPoint contact in collision.contacts)
+            {
+                // If the normal is mostly "up" (y > some threshold), we treat it as a top landing
+                if (contact.normal.y > 0.5f)
+                {
+                    isJumping = false;
+                    return;
+                }
+            }
+            // If we never found a normal pointing up, it must be a side -> death
+            GameManager.Instance.OnPlayerDeath();
+        }
+        
         if (collision.collider.tag == "Spike")
         {
             GameManager.Instance.OnPlayerDeath();
+        }
+        else if (collision.collider.tag == "Ground")
+        {
+            isJumping = false;
         }
     }
 }
