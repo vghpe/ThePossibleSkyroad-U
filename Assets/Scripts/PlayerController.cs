@@ -7,6 +7,7 @@ public class PlayerController : MonoBehaviour
 
     private Rigidbody rb;
     private bool isJumping = false;
+    private bool jumpHeld = false;
 
     private void Awake()
     {
@@ -21,13 +22,13 @@ public class PlayerController : MonoBehaviour
             // Move forward (z direction as example)
             transform.Translate(Vector3.forward * forwardSpeed * Time.deltaTime);
 
-            // Jump on Space (or any key)
+            // Detect jump button hold
+            jumpHeld = Input.GetKey(KeyCode.Space);
+
+            // Jump on Space (or any key down event)
             if (Input.GetKeyDown(KeyCode.Space) && !isJumping)
             {
-                // Trigger jump physics
-                rb.linearVelocity = new Vector3(rb.linearVelocity.x, jumpForce, rb.linearVelocity.z);
-
-                isJumping = true;
+                TriggerJump();
             }
 
             // Debug test: Press K to simulate death
@@ -36,7 +37,15 @@ public class PlayerController : MonoBehaviour
                 GameManager.Instance.OnPlayerDeath();
             }
         }
+
         Debug.Log(isJumping);
+    }
+
+    private void TriggerJump()
+    {
+        // Trigger jump physics
+        rb.linearVelocity = new Vector3(rb.linearVelocity.x, jumpForce, rb.linearVelocity.z);
+        isJumping = true;
     }
 
     public void ResetPlayer()
@@ -48,26 +57,26 @@ public class PlayerController : MonoBehaviour
         rb.angularVelocity = Vector3.zero;
     }
 
-    // Example collision detection for future
     private void OnCollisionEnter(Collision collision)
     {
         // If it's a platform
         if (collision.collider.CompareTag("Platform"))
         {
-            // Check each contact point
             foreach (ContactPoint contact in collision.contacts)
             {
-                // If the normal is mostly "up" (y > some threshold), we treat it as a top landing
                 if (contact.normal.y > 0.5f)
                 {
                     isJumping = false;
+                    if (jumpHeld)
+                    {
+                        TriggerJump();
+                    }
                     return;
                 }
             }
-            // If we never found a normal pointing up, it must be a side -> death
             GameManager.Instance.OnPlayerDeath();
         }
-        
+
         if (collision.collider.tag == "Spike")
         {
             GameManager.Instance.OnPlayerDeath();
@@ -75,6 +84,10 @@ public class PlayerController : MonoBehaviour
         else if (collision.collider.tag == "Ground")
         {
             isJumping = false;
+            if (jumpHeld)
+            {
+                TriggerJump();
+            }
         }
     }
 }
