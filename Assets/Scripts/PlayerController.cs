@@ -16,6 +16,9 @@ public class PlayerController : MonoBehaviour
     [Range(0.2f, 3f)]
     public float totalJumpTime = 1f;
 
+    [Header("Rotation Settings")]
+    public float rotationSpeed = 100f; // Rotation speed in degrees per second
+
     [Header("Readonly Runtime Debug")]
     [SerializeField] private float customGravity;
     [SerializeField] private float initialJumpVelocity;
@@ -24,10 +27,15 @@ public class PlayerController : MonoBehaviour
     private bool isJumping = false;
 
     private float distanceSinceLastTick = 0f;
+    private Transform firstChild;
 
     private void Awake()
     {
         rb = GetComponent<Rigidbody>();
+        if (transform.childCount > 0)
+        {
+            firstChild = transform.GetChild(0);
+        }
     }
 
     private void Start()
@@ -85,6 +93,21 @@ public class PlayerController : MonoBehaviour
             Vector3 velocity = rb.linearVelocity;
             velocity.y -= customGravity * Time.fixedDeltaTime;
             rb.linearVelocity = velocity;
+
+            // Handle child rotation
+            if (firstChild != null)
+            {
+                if (isJumping)
+                {
+                    // Rotate the child while jumping or falling
+                    firstChild.Rotate(Vector3.right * rotationSpeed * Time.fixedDeltaTime);
+                }
+                else
+                {
+                    // Reset rotation when grounded
+                    firstChild.localRotation = Quaternion.identity;
+                }
+            }
         }
     }
 
