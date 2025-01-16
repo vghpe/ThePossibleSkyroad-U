@@ -19,7 +19,7 @@ public class LevelManager : MonoBehaviour
 
     [Header("Prefabs")]
     public GameObject platformPrefab;      // Visual prefab for floor/platform (for black pixels)
-    public GameObject groundPrefab;  // Unique floor prefab for blue pixels
+    public GameObject groundPrefab;        // Unique floor prefab for blue pixels
     public GameObject spikePrefab;         // Visual prefab for spikes
     public GameObject lavaPrefab;          // Visual prefab for lava
 
@@ -45,7 +45,7 @@ public class LevelManager : MonoBehaviour
             return;
         }
 
-        // Clear previous content (if any)
+        // Clear previous content (if any).
         ClearLevel();
 
         int width = levelMap.width;
@@ -65,7 +65,6 @@ public class LevelManager : MonoBehaviour
                 // Handle black (regular platform) pixels.
                 if (IsBlack(pixel))
                 {
-                    // Found a contiguous segment of black pixels.
                     int segmentStart = x;
 
                     // Instantiate individual visual cubes for all contiguous black pixels.
@@ -87,7 +86,7 @@ public class LevelManager : MonoBehaviour
                         x++;
                     }
 
-                    // Create a merged collider for this contiguous black segment.
+                    // Create a merged collider for the contiguous black segment.
                     int segmentEnd = x - 1;
                     int segmentLength = segmentEnd - segmentStart + 1;
 
@@ -101,13 +100,17 @@ public class LevelManager : MonoBehaviour
 
                     BoxCollider boxCol = mergedColliderGO.AddComponent<BoxCollider>();
                     boxCol.size = new Vector3(cubeSize, cubeSize, segmentLength * cubeSize);
+
+                    // Assign the merged collider's layer and tag.
+                    mergedColliderGO.layer = LayerMask.NameToLayer("Ground");
+                    mergedColliderGO.tag = "Platform";
                 }
                 // Handle blue (unique floor) pixels.
                 else if (IsBlue(pixel))
                 {
                     int segmentStart = x;
 
-                    // Instantiate individual visual cubes for contiguous blue pixels.
+                    // Instantiate individual visual cubes for all contiguous blue pixels.
                     while (x < width && IsBlue(levelMap.GetPixel(x, y)))
                     {
                         Vector3 pos = new Vector3(0, y * cubeSize + cubeSize * 0.5f, (x - xOffset) * cubeSize);
@@ -139,6 +142,10 @@ public class LevelManager : MonoBehaviour
 
                     BoxCollider boxCol = mergedColliderGO.AddComponent<BoxCollider>();
                     boxCol.size = new Vector3(cubeSize, cubeSize, segmentLength * cubeSize);
+
+                    // Assign the merged collider's layer and tag.
+                    mergedColliderGO.layer = LayerMask.NameToLayer("Ground");
+                    mergedColliderGO.tag = "Platform";
                 }
                 else
                 {

@@ -146,7 +146,7 @@ public class PlayerController : MonoBehaviour
 
     public void ResetPlayer()
     {
-        transform.position = Vector3.zero;
+        transform.position = new Vector3(0, 1, 0);
         transform.rotation = Quaternion.identity;
         rb.linearVelocity = Vector3.zero;
         rb.angularVelocity = Vector3.zero;
