@@ -21,10 +21,14 @@ public class PlayerController : MonoBehaviour
     [SerializeField] private LayerMask groundLayer;
     // For a pivot-at-bottom approach, a small distance is enough.
     [SerializeField] private float groundCheckDistance = 0.1f;
+    // Offset along the player's forward (z) axis for the dual raycasts.
+    // Adjust this based on your cube's depth (front-back) size.
+    [SerializeField] private float groundCheckDepthOffset = 0.45f;
 
     [Header("Readonly Runtime Debug")]
     [SerializeField] private float customGravity;
     [SerializeField] private float initialJumpVelocity;
+    [SerializeField] private float jumpDistance; // The horizontal distance traveled during a jump
 
     private Rigidbody rb;
     private Transform firstChild;
@@ -77,7 +81,7 @@ public class PlayerController : MonoBehaviour
         }
 
         // Debug: Force death
-        if (Input.GetKeyDown(KeyCode.K))
+        if (Input.GetKeyDown(KeyCode.R))
         {
             GameManager.Instance.OnPlayerDeath();
         }
@@ -121,16 +125,23 @@ public class PlayerController : MonoBehaviour
     }
 
     /// <summary>
-    /// Uses a raycast to determine if the player is on the ground.
-    /// With pivot-at-bottom, cast from transform.position with a small upward offset.
+    /// Uses two raycasts to determine if the player is on the ground.
+    /// Rays are cast from the two edges along the player's forward (z) axis with a small upward offset.
     /// </summary>
     private bool IsGrounded()
     {
-        // Since the pivot is at the bottom, we start at transform.position.
-        // Add a small offset upward so the ray starts inside the collider rather than exactly at the edge.
-        Vector3 origin = transform.position + Vector3.up * 0.05f;
-        // Cast downwards
-        return Physics.Raycast(origin, Vector3.down, groundCheckDistance, groundLayer);
+        // A small upward offset ensures we don't start the ray exactly at the collider's edge.
+        Vector3 originCenter = transform.position + Vector3.up * 0.05f;
+        
+        // Calculate the two raycast origins using the depth offset along the player's local z axis.
+        Vector3 originFront = originCenter + transform.forward * groundCheckDepthOffset;
+        Vector3 originBack = originCenter - transform.forward * groundCheckDepthOffset;
+
+        // Cast two rays downward from the front and back origins.
+        bool hitFront = Physics.Raycast(originFront, Vector3.down, groundCheckDistance, groundLayer);
+        bool hitBack  = Physics.Raycast(originBack, Vector3.down, groundCheckDistance, groundLayer);
+
+        return hitFront || hitBack;
     }
 
     /// <summary>
@@ -155,13 +166,21 @@ public class PlayerController : MonoBehaviour
         UpdateJumpParameters();
     }
 
+    /// <summary>
+    /// Updates the jump parameters and recalculates the read-only fields.
+    /// </summary>
     private void UpdateJumpParameters()
     {
         // Using a symmetrical jump formula:
-        // gravity = 8 * jumpHeight / (totalJumpTime^2)
-        // initialVelocity = 4 * jumpHeight / totalJumpTime
+        // customGravity = 8 * jumpHeight / (totalJumpTime^2)
+        // initialJumpVelocity = 4 * jumpHeight / totalJumpTime
         customGravity = 8f * jumpHeight / (totalJumpTime * totalJumpTime);
         initialJumpVelocity = 4f * jumpHeight / totalJumpTime;
+
+        // Calculate forward speed (units per second) based on BPM-based movement.
+        float forwardSpeed = (bpm / 60f) * unitsPerTick;
+        // Calculate how far the player will travel in the air during a jump.
+        jumpDistance = forwardSpeed * totalJumpTime;
     }
 
     /// <summary>
@@ -194,5 +213,29 @@ public class PlayerController : MonoBehaviour
                 GameManager.Instance.OnPlayerDeath();
             }
         }
+    }
+
+    /// <summary>
+    /// Draws debug gizmos for the dual raycasts used in the ground check.
+    /// </summary>
+    private void OnDrawGizmos()
+    {
+        // Compute the common origin with an upward offset.
+        Vector3 originCenter = transform.position + Vector3.up * 0.05f;
+        // Calculate front and back origins based on the z (forward) axis offset.
+        Vector3 originFront = originCenter + transform.forward * groundCheckDepthOffset;
+        Vector3 originBack = originCenter - transform.forward * groundCheckDepthOffset;
+
+        // Set the Gizmo color for the ground check rays.
+        Gizmos.color = Color.green;
+
+        // Draw the front ray.
+        Gizmos.DrawLine(originFront, originFront + Vector3.down * groundCheckDistance);
+        // Draw the back ray.
+        Gizmos.DrawLine(originBack, originBack + Vector3.down * groundCheckDistance);
+
+        // Optionally, draw the origin points to see where they are.
+        Gizmos.DrawSphere(originFront, 0.02f);
+        Gizmos.DrawSphere(originBack, 0.02f);
     }
 }
