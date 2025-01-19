@@ -75,8 +75,8 @@ public class PlayerController : MonoBehaviour
         // BPM-based forward movement.
         float forwardSpeed = (bpm / 60f) * unitsPerTick;
         float distThisFrame = forwardSpeed * Time.deltaTime;
-        transform.Translate(Vector3.forward * distThisFrame, Space.World);
-        distanceSinceLastTick += distThisFrame;
+        Vector3 newPosition = rb.position + Vector3.forward * distThisFrame;
+        rb.MovePosition(newPosition);
         if (distanceSinceLastTick >= unitsPerTick)
         {
             distanceSinceLastTick -= unitsPerTick;
