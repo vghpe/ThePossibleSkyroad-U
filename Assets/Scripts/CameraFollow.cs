@@ -36,6 +36,8 @@ public class ThirdPersonCamera : MonoBehaviour
             }
         }
     }
+    
+    
 
     private void PositionCamera()
     {

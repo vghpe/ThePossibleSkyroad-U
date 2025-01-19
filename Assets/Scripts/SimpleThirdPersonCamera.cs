@@ -16,15 +16,29 @@ public class SimpleThirdPersonCamera : MonoBehaviour
     public float boundsCenterY;         // Center of the current bounding box
     private float currentYPosition;      // Current vertical position of the camera
 
+    private float defaultBoundsCenterY;
+    private float defaultBoundsHeight;
+
     private void Start()
     {
-        // Initialize the bounds center and camera position to match the player's initial position
-        if (player != null)
+        // Initialize defaults to the values set in the Inspector
+        defaultBoundsCenterY = boundsCenterY;
+        defaultBoundsHeight = boundsHeight;
+
+        if (boundsCenterY == 0f && player != null)
         {
             boundsCenterY = player.position.y;
-            currentYPosition = boundsCenterY;
         }
+        currentYPosition = boundsCenterY;
     }
+
+    public void ResetVerticalBounds()
+    {
+        boundsCenterY = defaultBoundsCenterY;
+        boundsHeight = defaultBoundsHeight;
+        currentYPosition = boundsCenterY;
+    }
+
 
     private void Update()
     {
@@ -33,6 +47,14 @@ public class SimpleThirdPersonCamera : MonoBehaviour
             UpdateCameraPosition();
         }
     }
+    
+    public void ResetVerticalBounds(float defaultCenterY, float defaultBoundsHeight)
+    {
+        boundsCenterY = defaultCenterY;      // Reset the center of the bounds
+        boundsHeight = defaultBoundsHeight; // Reset the height of the bounds
+        currentYPosition = boundsCenterY;   // Ensure the camera immediately snaps to the reset position
+    }
+
 
     private void OnValidate()
     {

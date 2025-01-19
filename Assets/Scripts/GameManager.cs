@@ -104,12 +104,31 @@ public class GameManager : MonoBehaviour
 
     private void ResetLevel()
     {
-        // Basic example:
-        // Reset player position, reset obstacles if needed
+        // Reset the player position
         if (playerController != null)
         {
             playerController.ResetPlayer();
         }
-        // More reset logic if you have environment obstacles, etc.
+
+        // Reset the camera bounds
+        if (Camera.main != null)
+        {
+            SimpleThirdPersonCamera cameraController = Camera.main.GetComponent<SimpleThirdPersonCamera>();
+            if (cameraController != null)
+            {
+                cameraController.ResetVerticalBounds();
+            }
+        }
+
+        // Destroy all active death particles
+        GameObject[] deathParticles = GameObject.FindGameObjectsWithTag("DeathParticle"); // Ensure the death particles are tagged properly
+        foreach (GameObject particle in deathParticles)
+        {
+            Destroy(particle);
+        }
+
+        // Add additional reset logic for other environment elements, if necessary.
     }
+
+
 }
