@@ -13,7 +13,7 @@ public class SimpleThirdPersonCamera : MonoBehaviour
     public float boundsHeight = 6f;      // Fixed height of the vertical bounds
     public float verticalFollowSpeed = 5f; // Speed for vertical movement adjustment
 
-    private float boundsCenterY;         // Center of the current bounding box
+    public float boundsCenterY;         // Center of the current bounding box
     private float currentYPosition;      // Current vertical position of the camera
 
     private void Start()
