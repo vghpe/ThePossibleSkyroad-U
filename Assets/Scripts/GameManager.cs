@@ -21,6 +21,10 @@ public class GameManager : MonoBehaviour
     [SerializeField] private UIManager uiManager;
     [SerializeField] private PlayerController playerController;
 
+    [Header("Audio Settings")]
+    [SerializeField] private AudioSource audioSource;  // Reference to an AudioSource (should be on this GameObject or assigned)
+    [SerializeField] private AudioClip songClip;         // The main music track for the level
+
     private void Awake()
     {
         // Singleton pattern (optional)
@@ -38,10 +42,15 @@ public class GameManager : MonoBehaviour
     {
         // Called from UI button or debug call
         attempts = 0; 
-        // If we want to reset attempts whenever we start
-        // or keep attempts across multiple runs, adjust as needed
+        // Set state to Playing and start the track from the beginning.
         SetGameState(GameState.Playing);
         Debug.Log("Game Started");
+
+        if (audioSource != null && songClip != null)
+        {
+            audioSource.clip = songClip;
+            audioSource.Play();
+        }
     }
 
     public void PauseGame()
@@ -71,9 +80,10 @@ public class GameManager : MonoBehaviour
         Debug.Log($"Player Died - Attempts: {attempts}");
         SetGameState(GameState.Death);
 
-        // Reset logic, then return to Playing state
+        // Reset level (this will also restart the music track)
         ResetLevel();
-        // Or do a short wait, or a fadeout if needed
+
+        // Transition back to playing state (or after a delay/fade, if desired)
         SetGameState(GameState.Playing);
     }
 
@@ -121,14 +131,20 @@ public class GameManager : MonoBehaviour
         }
 
         // Destroy all active death particles
-        GameObject[] deathParticles = GameObject.FindGameObjectsWithTag("DeathParticle"); // Ensure the death particles are tagged properly
+        GameObject[] deathParticles = GameObject.FindGameObjectsWithTag("DeathParticle");
         foreach (GameObject particle in deathParticles)
         {
             Destroy(particle);
         }
 
+        // Restart the song track
+        if (audioSource != null && songClip != null)
+        {
+            audioSource.Stop();
+            audioSource.clip = songClip;
+            audioSource.Play();
+        }
+
         // Add additional reset logic for other environment elements, if necessary.
     }
-
-
 }
