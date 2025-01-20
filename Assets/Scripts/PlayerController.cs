@@ -5,18 +5,14 @@ public class PlayerController : MonoBehaviour
 {
     [Header("Reset Position")] 
     public float playerProgress = 0f;
-    
+
     [Header("BPM-Based Movement")]
-    [Range(30f, 300f)]
-    public float bpm = 120f;
-    [Range(0.1f, 10f)]
-    public float unitsPerTick = 4f;
+    [Range(30f, 300f)] public float bpm = 120f;
+    [Range(0.1f, 10f)] public float unitsPerTick = 4f;
 
     [Header("Symmetrical Jump Settings")]
-    [Range(0.5f, 5f)]
-    public float jumpHeight = 2f;
-    [Range(0.2f, 3f)]
-    public float totalJumpTime = 1f;
+    [Range(0.5f, 5f)] public float jumpHeight = 2f;
+    [Range(0.2f, 3f)] public float totalJumpTime = 1f;
 
     [Header("Rotation Settings")]
     public float rotationSpeed = 100f; // Rotation speed in degrees per second
@@ -26,16 +22,18 @@ public class PlayerController : MonoBehaviour
     [SerializeField] private float groundCheckDistance = 0.1f;
     [SerializeField] private float groundCheckDepthOffset = 0.45f;
 
+    [Header("Death Settings")]
+    public GameObject deathParticlePrefab;  // Assign a particle prefab here.
+    public float deathDelay = 2.5f;           // Delay before calling OnPlayerDeath.
+    [SerializeField] private AudioClip deathSoundClip; // Assign a death sound effect.
+    [SerializeField] private AudioSource audioSource;         // Player's AudioSource for sound effects.
+
     [Header("Readonly Runtime Debug")]
     [SerializeField] private float customGravity;
     [SerializeField] private float initialJumpVelocity;
     [SerializeField] private float jumpDistance;         // Horizontal distance for landing at same level.
     [SerializeField] private float jumpDistanceAbove;    // Horizontal distance if landing 1 unit above.
     [SerializeField] private float jumpDistanceBelow;    // Horizontal distance if landing 1 unit below.
-
-    [Header("Death Settings")]
-    public GameObject deathParticlePrefab;  // Assign a particle prefab here.
-    public float deathDelay = 2.5f;           // Delay before calling OnPlayerDeath.
 
     private Rigidbody rb;
     private Transform firstChild;
@@ -46,6 +44,7 @@ public class PlayerController : MonoBehaviour
     private void Awake()
     {
         rb = GetComponent<Rigidbody>();
+        audioSource = GetComponent<AudioSource>(); // Ensure AudioSource is attached to the player.
 
         if (transform.childCount > 0)
         {
@@ -133,9 +132,6 @@ public class PlayerController : MonoBehaviour
         }
     }
 
-    /// <summary>
-    /// Uses two raycasts to determine if the player is on the ground.
-    /// </summary>
     private bool IsGrounded()
     {
         Vector3 originCenter = transform.position + Vector3.up * 0.05f;
@@ -143,14 +139,11 @@ public class PlayerController : MonoBehaviour
         Vector3 originBack = originCenter - transform.forward * groundCheckDepthOffset;
 
         bool hitFront = Physics.Raycast(originFront, Vector3.down, groundCheckDistance, groundLayer);
-        bool hitBack  = Physics.Raycast(originBack, Vector3.down, groundCheckDistance, groundLayer);
+        bool hitBack = Physics.Raycast(originBack, Vector3.down, groundCheckDistance, groundLayer);
 
         return hitFront || hitBack;
     }
 
-    /// <summary>
-    /// Executes a jump by setting the upward velocity.
-    /// </summary>
     private void Jump()
     {
         Vector3 velocity = rb.linearVelocity;
@@ -169,56 +162,32 @@ public class PlayerController : MonoBehaviour
         isJumping = false;
         isDead = false;
 
-        // Reset Rigidbody constraints (freeze rotation if desired).
         rb.constraints = RigidbodyConstraints.None;
         rb.constraints = RigidbodyConstraints.FreezeRotation;
 
-        // Ensure the child is visible.
         if (firstChild != null)
             firstChild.gameObject.SetActive(true);
 
         UpdateJumpParameters();
     }
 
-    /// <summary>
-    /// Updates the jump parameters and recalculates the read-only fields.
-    /// Also calculates horizontal distances for landing on platforms at different heights.
-    /// </summary>
     private void UpdateJumpParameters()
     {
-        // Symmetrical jump formulas:
-        // customGravity = 8 * jumpHeight / (totalJumpTime^2)
-        // initialJumpVelocity = 4 * jumpHeight / totalJumpTime
         customGravity = 8f * jumpHeight / (totalJumpTime * totalJumpTime);
         initialJumpVelocity = 4f * jumpHeight / totalJumpTime;
 
-        // Calculate forward speed (units per second) based on BPM.
         float forwardSpeed = (bpm / 60f) * unitsPerTick;
-
-        // Jump distance for landing at same level.
         jumpDistance = forwardSpeed * totalJumpTime;
 
-        // Calculate jump distance for landing one unit above:
         float discriminantAbove = initialJumpVelocity * initialJumpVelocity - 2f * customGravity * 1f;
-        if (discriminantAbove >= 0f)
-        {
-            float tAbove = (initialJumpVelocity + Mathf.Sqrt(discriminantAbove)) / customGravity;
-            jumpDistanceAbove = forwardSpeed * tAbove;
-        }
-        else
-        {
-            jumpDistanceAbove = 0f;
-        }
+        jumpDistanceAbove = discriminantAbove >= 0f
+            ? forwardSpeed * (initialJumpVelocity + Mathf.Sqrt(discriminantAbove)) / customGravity
+            : 0f;
 
-        // Calculate jump distance for landing one unit below:
         float discriminantBelow = initialJumpVelocity * initialJumpVelocity + 2f * customGravity * 1f;
-        float tBelow = (initialJumpVelocity + Mathf.Sqrt(discriminantBelow)) / customGravity;
-        jumpDistanceBelow = forwardSpeed * tBelow;
+        jumpDistanceBelow = forwardSpeed * (initialJumpVelocity + Mathf.Sqrt(discriminantBelow)) / customGravity;
     }
 
-    /// <summary>
-    /// Handles collisions and triggers the death routine.
-    /// </summary>
     private void OnCollisionEnter(Collision collision)
     {
         if (isDead)
@@ -250,52 +219,43 @@ public class PlayerController : MonoBehaviour
         }
     }
 
-    /// <summary>
-    /// Coroutine that freezes the player, hides the mesh, spawns a particle system,
-    /// and waits for the specified delay before notifying the GameManager of death.
-    /// </summary>
     private IEnumerator HandleDeath()
     {
         isDead = true;
 
-        // Freeze physics: zero velocities and freeze Rigidbody constraints.
+        // Freeze physics
         rb.linearVelocity = Vector3.zero;
         rb.angularVelocity = Vector3.zero;
         rb.constraints = RigidbodyConstraints.FreezeAll;
 
-        // Hide the child mesh.
+        // Stop the music
+        if (GameManager.Instance != null && GameManager.Instance.AudioSource != null)
+        {
+            GameManager.Instance.AudioSource.Stop();
+        }
+
+        // Play the death sound
+        if (audioSource != null && deathSoundClip != null)
+        {
+            audioSource.PlayOneShot(deathSoundClip);
+        }
+
+        // Hide the child mesh
         if (firstChild != null)
         {
             firstChild.gameObject.SetActive(false);
         }
 
-        // Spawn the death particle system, if assigned.
+        // Spawn the death particle system
         if (deathParticlePrefab != null)
         {
             Instantiate(deathParticlePrefab, transform.position, Quaternion.identity);
         }
 
-        // Wait for the specified delay.
+        // Wait for the specified delay
         yield return new WaitForSeconds(deathDelay);
 
-        // Notify GameManager (or execute further death logic).
+        // Notify GameManager of death
         GameManager.Instance.OnPlayerDeath();
-    }
-
-    /// <summary>
-    /// Draws debug gizmos for ground check raycasts.
-    /// </summary>
-    private void OnDrawGizmos()
-    {
-        Vector3 originCenter = transform.position + Vector3.up * 0.05f;
-        Vector3 originFront = originCenter + transform.forward * groundCheckDepthOffset;
-        Vector3 originBack = originCenter - transform.forward * groundCheckDepthOffset;
-
-        Gizmos.color = Color.green;
-        Gizmos.DrawLine(originFront, originFront + Vector3.down * groundCheckDistance);
-        Gizmos.DrawLine(originBack, originBack + Vector3.down * groundCheckDistance);
-
-        Gizmos.DrawSphere(originFront, 0.02f);
-        Gizmos.DrawSphere(originBack, 0.02f);
     }
 }

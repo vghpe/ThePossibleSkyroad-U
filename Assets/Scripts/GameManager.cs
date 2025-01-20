@@ -17,40 +17,55 @@ public class GameManager : MonoBehaviour
 
     private int attempts;
 
-    // References to other managers / scripts
+    [Header("References")]
     [SerializeField] private UIManager uiManager;
     [SerializeField] private PlayerController playerController;
 
     [Header("Audio Settings")]
-    [SerializeField] private AudioSource audioSource;  // Reference to an AudioSource (should be on this GameObject or assigned)
-    [SerializeField] private AudioClip songClip;         // The main music track for the level
+    [SerializeField] private AudioSource audioSource;  // Reference to an AudioSource for the music
+    [SerializeField] private AudioClip songClip;       // Main music track
+
+    public AudioSource AudioSource => audioSource;     // Public getter for PlayerController to stop music
 
     private void Awake()
     {
-        // Singleton pattern (optional)
-        if (Instance == null) { Instance = this; }
-        else { Destroy(gameObject); }
+        // Singleton pattern
+        if (Instance == null)
+        {
+            Instance = this;
+        }
+        else
+        {
+            Destroy(gameObject);
+        }
 
-        // Start in MainMenu for demonstration
         SetGameState(GameState.MainMenu);
-
-        // For testing, we can show attempts in the console
         attempts = 0;
     }
 
     public void StartGame()
     {
-        // Called from UI button or debug call
-        attempts = 0; 
-        // Set state to Playing and start the track from the beginning.
+        attempts = 0;
         SetGameState(GameState.Playing);
+
         Debug.Log("Game Started");
 
+        // Start the music track
         if (audioSource != null && songClip != null)
         {
             audioSource.clip = songClip;
             audioSource.Play();
         }
+    }
+
+    public void OnPlayerDeath()
+    {
+        attempts++;
+        Debug.Log($"Player Died - Attempts: {attempts}");
+
+        // No need to stop music here; PlayerController handles it
+        ResetLevel();
+        SetGameState(GameState.Playing);
     }
 
     public void PauseGame()
@@ -59,7 +74,13 @@ public class GameManager : MonoBehaviour
         {
             SetGameState(GameState.Paused);
             Time.timeScale = 0f;
+
             Debug.Log("Game Paused");
+            // Optionally pause music
+            if (audioSource != null && audioSource.isPlaying)
+            {
+                audioSource.Pause();
+            }
         }
     }
 
@@ -69,43 +90,46 @@ public class GameManager : MonoBehaviour
         {
             SetGameState(GameState.Playing);
             Time.timeScale = 1f;
+
             Debug.Log("Game Resumed");
+            // Optionally resume music
+            if (audioSource != null)
+            {
+                audioSource.UnPause();
+            }
         }
-    }
-
-    public void OnPlayerDeath()
-    {
-        // Called by PlayerController or collision script
-        attempts++;
-        Debug.Log($"Player Died - Attempts: {attempts}");
-        SetGameState(GameState.Death);
-
-        // Reset level (this will also restart the music track)
-        ResetLevel();
-
-        // Transition back to playing state (or after a delay/fade, if desired)
-        SetGameState(GameState.Playing);
     }
 
     public void OnLevelComplete()
     {
         Debug.Log("Level Complete!");
         SetGameState(GameState.Victory);
-        // Could show a victory UI, etc.
+
+        // Stop the music if desired
+        if (audioSource != null && audioSource.isPlaying)
+        {
+            audioSource.Stop();
+        }
     }
 
     public void ReturnToMainMenu()
     {
-        // Called by UI
         SetGameState(GameState.MainMenu);
+
         Debug.Log("Returned to Main Menu");
+
+        // Stop music if returning to main menu
+        if (audioSource != null)
+        {
+            audioSource.Stop();
+        }
     }
 
     private void SetGameState(GameState newState)
     {
         CurrentState = newState;
 
-        // Notify UI or do other transitions
+        // Notify UI of state change
         if (uiManager != null)
         {
             uiManager.UpdateUIState(newState, attempts);
@@ -114,22 +138,12 @@ public class GameManager : MonoBehaviour
 
     private void ResetLevel()
     {
-        // Reset the player position
+        // Reset the player
         if (playerController != null)
         {
             playerController.ResetPlayer();
         }
-
-        // Reset the camera bounds
-        if (Camera.main != null)
-        {
-            SimpleThirdPersonCamera cameraController = Camera.main.GetComponent<SimpleThirdPersonCamera>();
-            if (cameraController != null)
-            {
-                cameraController.ResetVerticalBounds();
-            }
-        }
-
+        
         // Destroy all active death particles
         GameObject[] deathParticles = GameObject.FindGameObjectsWithTag("DeathParticle");
         foreach (GameObject particle in deathParticles)
@@ -137,14 +151,12 @@ public class GameManager : MonoBehaviour
             Destroy(particle);
         }
 
-        // Restart the song track
+        // Optionally restart the music if required
         if (audioSource != null && songClip != null)
         {
             audioSource.Stop();
             audioSource.clip = songClip;
             audioSource.Play();
         }
-
-        // Add additional reset logic for other environment elements, if necessary.
     }
 }
