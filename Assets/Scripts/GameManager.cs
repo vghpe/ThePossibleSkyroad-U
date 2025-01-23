@@ -114,8 +114,10 @@ public class GameManager : MonoBehaviour
 
     public void ReturnToMainMenu()
     {
+        ResetLevel();
+        attempts = 0;
         SetGameState(GameState.MainMenu);
-
+        Time.timeScale = 1f;
         Debug.Log("Returned to Main Menu");
 
         // Stop music if returning to main menu
