@@ -22,7 +22,7 @@ public class UIManager : MonoBehaviour
         Debug.Log("Hid both panels");
         // Update attempts text
         if (attemptsText != null) 
-            attemptsText.text = "Attempts: " + attempts;
+            attemptsText.text = "" + attempts;
 
         switch (state)
         {
