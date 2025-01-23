@@ -8,8 +8,11 @@ public class UIManager : MonoBehaviour
     [SerializeField] private GameObject mainMenuPanel;
     [SerializeField] private GameObject pausePanel;
     [SerializeField] private GameObject hudPanel; // The new HUD panel
-    //[SerializeField] private Text attemptsTextLegacy;
     [SerializeField] private TextMeshProUGUI attemptsText;
+
+    [Header("Button Press Sound")]
+    [SerializeField] private AudioSource audioSource;     // Reference to the AudioSource for the sound effect
+    [SerializeField] private AudioClip tickSound;         // Reference to the tick sound effect
 
     public void UpdateUIState(GameState state, int attempts)
     {
@@ -18,8 +21,6 @@ public class UIManager : MonoBehaviour
         if (pausePanel != null) pausePanel.SetActive(false);
         if (hudPanel != null) hudPanel.SetActive(false);
 
-        
-        Debug.Log("Hid both panels");
         // Update attempts text
         if (attemptsText != null) 
             attemptsText.text = "" + attempts;
@@ -42,21 +43,34 @@ public class UIManager : MonoBehaviour
     // Button event hooks
     public void OnStartButton()
     {
+        PlayButtonSound(); // Play tick sound
         GameManager.Instance.StartGame();
     }
 
     public void OnPauseButton()
     {
+        PlayButtonSound(); // Play tick sound
         GameManager.Instance.PauseGame();
     }
 
     public void OnResumeButton()
     {
+        PlayButtonSound(); // Play tick sound
         GameManager.Instance.ResumeGame();
     }
 
     public void OnReturnToMenuButton()
     {
+        PlayButtonSound(); // Play tick sound
         GameManager.Instance.ReturnToMainMenu();
+    }
+
+    // Method to play the button press sound
+    private void PlayButtonSound()
+    {
+        if (audioSource != null && tickSound != null)
+        {
+            audioSource.PlayOneShot(tickSound); // Play the tick sound once
+        }
     }
 }
