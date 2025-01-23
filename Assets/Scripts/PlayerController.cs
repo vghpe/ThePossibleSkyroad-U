@@ -1,5 +1,6 @@
 using UnityEngine;
 using System.Collections;
+using UnityEngine.InputSystem;
 
 public class PlayerController : MonoBehaviour
 {
@@ -40,6 +41,7 @@ public class PlayerController : MonoBehaviour
     private bool isJumping = false;
     private bool isDead = false;
     private float distanceSinceLastTick = 0f;
+    private InputAction jumpAction;
 
     private void Awake()
     {
@@ -55,7 +57,28 @@ public class PlayerController : MonoBehaviour
     private void Start()
     {
         UpdateJumpParameters();
+        PlayerInput playerInput = GetComponent<PlayerInput>();
+        if (playerInput != null)
+        {
+            // Make sure "Fire" matches the name of the action in your Input Actions asset
+            jumpAction = playerInput.actions["Jump"];
+
+            // Subscribe to "performed" so when the user clicks or taps, we can jump
+            jumpAction.performed += OnJumpPerformed;
+        }
+        
     }
+    
+    private void OnJumpPerformed(InputAction.CallbackContext context)
+    {
+        // Only jump if grounded
+        if (IsGrounded())
+        {
+            Jump();
+        }
+    }
+    
+
 
     private void OnValidate()
     {
@@ -83,10 +106,10 @@ public class PlayerController : MonoBehaviour
         }
 
         // Jump input only when grounded.
-        if (Input.GetKeyDown(KeyCode.Space) && IsGrounded())
-        {
-            Jump();
-        }
+        //if (Input.GetKeyDown(KeyCode.Space) && IsGrounded())
+        //{
+        //    Jump();
+        //}
 
         // Debug: Force death.
         if (Input.GetKeyDown(KeyCode.R))
@@ -110,8 +133,8 @@ public class PlayerController : MonoBehaviour
             if (grounded)
             {
                 isJumping = false;
-                // Optionally allow auto-jump if space is held.
-                if (Input.GetKey(KeyCode.Space))
+                
+                if (jumpAction != null && jumpAction.ReadValue<float>() > 0f)
                 {
                     Jump();
                 }
