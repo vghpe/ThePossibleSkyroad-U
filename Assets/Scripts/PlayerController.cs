@@ -23,11 +23,15 @@ public class PlayerController : MonoBehaviour
     [SerializeField] private float groundCheckDistance = 0.1f;
     [SerializeField] private float groundCheckDepthOffset = 0.45f;
 
+    [Header("Snapping Settings")]
+    public float snapThreshold = 0.1f; // How close the jump needs to be to a target for snapping
+    public float snapIncrement = 1.0f; // Snap to nearest whole number or custom increment (e.g., 0.5)
+
     [Header("Death Settings")]
     public GameObject deathParticlePrefab;  // Assign a particle prefab here.
-    public float deathDelay = 2.5f;           // Delay before calling OnPlayerDeath.
+    public float deathDelay = 2.5f;         // Delay before calling OnPlayerDeath.
     [SerializeField] private AudioClip deathSoundClip; // Assign a death sound effect.
-    [SerializeField] private AudioSource audioSource;         // Player's AudioSource for sound effects.
+    [SerializeField] private AudioSource audioSource;  // Player's AudioSource for sound effects.
 
     [Header("Readonly Runtime Debug")]
     [SerializeField] private float customGravity;
@@ -42,6 +46,7 @@ public class PlayerController : MonoBehaviour
     private bool isDead = false;
     private float distanceSinceLastTick = 0f;
     private InputAction jumpAction;
+    private float jumpStartZ = 0f; // Track the Z-position at the start of the jump
 
     private void Awake()
     {
@@ -60,15 +65,14 @@ public class PlayerController : MonoBehaviour
         PlayerInput playerInput = GetComponent<PlayerInput>();
         if (playerInput != null)
         {
-            // Make sure "Fire" matches the name of the action in your Input Actions asset
+            // Make sure "Jump" matches the name of the action in your Input Actions asset
             jumpAction = playerInput.actions["Jump"];
 
             // Subscribe to "performed" so when the user clicks or taps, we can jump
             jumpAction.performed += OnJumpPerformed;
         }
-        
     }
-    
+
     private void OnJumpPerformed(InputAction.CallbackContext context)
     {
         // Only jump if grounded
@@ -77,8 +81,6 @@ public class PlayerController : MonoBehaviour
             Jump();
         }
     }
-    
-
 
     private void OnValidate()
     {
@@ -105,12 +107,6 @@ public class PlayerController : MonoBehaviour
             Debug.Log("Tick!");
         }
 
-        // Jump input only when grounded.
-        //if (Input.GetKeyDown(KeyCode.Space) && IsGrounded())
-        //{
-        //    Jump();
-        //}
-
         // Debug: Force death.
         if (Input.GetKeyDown(KeyCode.R))
         {
@@ -122,25 +118,48 @@ public class PlayerController : MonoBehaviour
     {
         if (GameManager.Instance.CurrentState == GameState.Playing && !isDead)
         {
-            // Apply custom gravity.
+            // 1. Apply custom gravity
             Vector3 velocity = rb.linearVelocity;
             velocity.y -= customGravity * Time.fixedDeltaTime;
             rb.linearVelocity = velocity;
 
-            // Check if actually grounded.
             bool grounded = IsGrounded();
 
-            if (grounded)
+            // 2. If we’re grounded but were in the air, we just landed
+            if (grounded && isJumping)
             {
+                float distanceJumped = rb.position.z - jumpStartZ;
+                Debug.Log($"Jump distance: {distanceJumped:F2} units");
+
+                // --- General snapping logic ---
+                // Snap to nearest multiple of snapIncrement (e.g., 1.0 or 0.5)
+                float snappedDistance = Mathf.Round(distanceJumped / snapIncrement) * snapIncrement;
+                float diff = Mathf.Abs(distanceJumped - snappedDistance);
+
+                // Only snap if within the threshold
+                if (diff < snapThreshold)
+                {
+                    Debug.Log($"Snapping to {snappedDistance} (from {distanceJumped:F2})");
+                    Vector3 pos = rb.position;
+                    pos.z = jumpStartZ + snappedDistance;
+                    rb.position = pos;
+                }
+                else
+                {
+                    Debug.Log($"No snapping: Difference {diff:F2} exceeds threshold {snapThreshold}");
+                }
+                // --- End snapping logic ---
+
                 isJumping = false;
-                
+
+                // 3. Auto-jump if user is still holding jump
                 if (jumpAction != null && jumpAction.ReadValue<float>() > 0f)
                 {
                     Jump();
                 }
             }
 
-            // Rotate child (visual) only when in air.
+            // 4. Rotate child (visual) in air vs reset on ground
             if (firstChild != null)
             {
                 if (!grounded)
@@ -169,9 +188,13 @@ public class PlayerController : MonoBehaviour
 
     private void Jump()
     {
+        // Store the z-position where the jump started
+        jumpStartZ = rb.position.z;
+
         Vector3 velocity = rb.linearVelocity;
         velocity.y = initialJumpVelocity;
         rb.linearVelocity = velocity;
+
         isJumping = true;
     }
 
