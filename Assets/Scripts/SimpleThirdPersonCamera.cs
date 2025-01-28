@@ -3,25 +3,29 @@ using UnityEngine;
 [ExecuteAlways]
 public class SimpleThirdPersonCamera : MonoBehaviour
 {
-    public Transform player;             // The player the camera will follow
+    [Header("Player & Basic Settings")]
+    public Transform player;              
     [Range(-90f, 90f)]
-    public float pitchAngle = 30f;       // The angle (in degrees) the camera looks down at the player
-    public float distance = 10f;         // Distance from the player
-    public float rotationOffsetX = 0f;   // Additional rotation adjustment on the X-axis
-    public bool previewInEditor = true; // Toggle for previewing in editor
+    public float pitchAngle = 30f;        
+    public float distance = 10f;          
+    public float rotationOffsetX = 0f;    
+    public bool previewInEditor = true;   
 
-    public float boundsHeight = 6f;      // Fixed height of the vertical bounds
-    public float verticalFollowSpeed = 5f; // Speed for vertical movement adjustment
-
-    public float boundsCenterY;         // Center of the current bounding box
-    private float currentYPosition;      // Current vertical position of the camera
+    [Header("Vertical Bounds Settings")]
+    public float boundsHeight = 6f;        
+    public float verticalFollowSpeed = 5f; // Speed of bounding box’s “center” movement
+    public float boundsCenterY;            
+    private float currentYPosition;        
 
     private float defaultBoundsCenterY;
     private float defaultBoundsHeight;
 
+    [Header("Camera Smoothing")]
+    public float cameraSmoothTime = 0.2f;  // Overall smoothing for camera position
+    private Vector3 velocitySmoothDamp;    // Internal var for SmoothDamp
+
     private void Start()
     {
-        // Initialize defaults to the values set in the Inspector
         defaultBoundsCenterY = boundsCenterY;
         defaultBoundsHeight = boundsHeight;
 
@@ -39,22 +43,20 @@ public class SimpleThirdPersonCamera : MonoBehaviour
         currentYPosition = boundsCenterY;
     }
 
+    public void ResetVerticalBounds(float defaultCenterY, float defaultBoundsH)
+    {
+        boundsCenterY = defaultCenterY;
+        boundsHeight = defaultBoundsH;
+        currentYPosition = boundsCenterY;
+    }
 
-    private void Update()
+    private void LateUpdate()
     {
         if (player != null)
         {
             UpdateCameraPosition();
         }
     }
-    
-    public void ResetVerticalBounds(float defaultCenterY, float defaultBoundsHeight)
-    {
-        boundsCenterY = defaultCenterY;      // Reset the center of the bounds
-        boundsHeight = defaultBoundsHeight; // Reset the height of the bounds
-        currentYPosition = boundsCenterY;   // Ensure the camera immediately snaps to the reset position
-    }
-
 
     private void OnValidate()
     {
@@ -66,32 +68,49 @@ public class SimpleThirdPersonCamera : MonoBehaviour
 
     private void UpdateCameraPosition()
     {
-        // Calculate the upper and lower bounds based on the boundsCenterY
-        float lowerBound = boundsCenterY - boundsHeight / 2f;
-        float upperBound = boundsCenterY + boundsHeight / 2f;
+        // 1. Vertical bounding logic
+        float halfHeight = boundsHeight / 2f;
+        float lowerBound = boundsCenterY - halfHeight;
+        float upperBound = boundsCenterY + halfHeight;
 
-        // Check if the player is outside the bounds
-        if (player.position.y > upperBound)
+        float playerY = player.position.y;
+        if (playerY > upperBound)
         {
-            // Move the bounding box up
-            boundsCenterY = player.position.y - boundsHeight / 2f;
+            // Shift the bounding box upward
+            boundsCenterY = playerY - halfHeight;
         }
-        else if (player.position.y < lowerBound)
+        else if (playerY < lowerBound)
         {
-            // Move the bounding box down
-            boundsCenterY = player.position.y + boundsHeight / 2f;
+            // Shift the bounding box downward
+            boundsCenterY = playerY + halfHeight;
         }
 
-        // Smoothly adjust the camera's Y position toward the center of the bounds
+        // Smoothly move our 'currentYPosition' to the new box center
         float targetY = boundsCenterY;
         currentYPosition = Mathf.Lerp(currentYPosition, targetY, Time.deltaTime * verticalFollowSpeed);
 
-        // Calculate the camera's new position
+        // 2. Compute raw target position (using pitch/distance)
         float radians = Mathf.Deg2Rad * pitchAngle;
-        Vector3 offset = new Vector3(0, Mathf.Sin(radians) * distance, -Mathf.Cos(radians) * distance);
-        transform.position = new Vector3(player.position.x, currentYPosition, player.position.z) + offset;
+        Vector3 offset = new Vector3
+        (
+            0f,
+            Mathf.Sin(radians) * distance,
+            -Mathf.Cos(radians) * distance
+        );
 
-        // Apply rotation with pitch angle and additional offset
+        // The final desired spot
+        Vector3 desiredPos = new Vector3(player.position.x, currentYPosition, player.position.z) + offset;
+
+        // 3. SmoothDamp the camera from current position to 'desiredPos'
+        //    This smooths X, Y, and Z in one pass, reducing jitter
+        transform.position = Vector3.SmoothDamp(
+            transform.position,
+            desiredPos,
+            ref velocitySmoothDamp,
+            cameraSmoothTime
+        );
+
+        // 4. Handle rotation
         transform.rotation = Quaternion.Euler(pitchAngle + rotationOffsetX, 0f, 0f);
     }
 
@@ -100,22 +119,20 @@ public class SimpleThirdPersonCamera : MonoBehaviour
         if (player == null)
             return;
 
-        // Calculate the current bounds
-        float lowerBound = boundsCenterY - boundsHeight / 2f;
-        float upperBound = boundsCenterY + boundsHeight / 2f;
+        float halfHeight = boundsHeight / 2f;
+        float lowerBound = boundsCenterY - halfHeight;
+        float upperBound = boundsCenterY + halfHeight;
 
-        // Define custom colors
-        Color floorColor = new Color(0.2f, 0.6f, 0.2f); // Dark green
-        Color ceilingColor = new Color(0.6f, 0.2f, 0.6f); // Purple
+        Color floorColor = new Color(0.2f, 0.6f, 0.2f);  
+        Color ceilingColor = new Color(0.6f, 0.2f, 0.6f);
 
-        // Draw the floor (lower bound) as a horizontal line
+        // Draw bounding lines in the Scene view
         Gizmos.color = floorColor;
         Gizmos.DrawLine(
             new Vector3(player.position.x - 5, lowerBound, player.position.z),
             new Vector3(player.position.x + 5, lowerBound, player.position.z)
         );
 
-        // Draw the ceiling (upper bound) as a horizontal line
         Gizmos.color = ceilingColor;
         Gizmos.DrawLine(
             new Vector3(player.position.x - 5, upperBound, player.position.z),

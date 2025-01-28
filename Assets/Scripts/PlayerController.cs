@@ -16,7 +16,7 @@ public class PlayerController : MonoBehaviour
     [Range(0.2f, 3f)] public float totalJumpTime = 1f;
 
     [Header("Rotation Settings")]
-    public float rotationSpeed = 100f; // Rotation speed in degrees per second
+    public float rotationSpeed = 100f;
 
     [Header("Ground Check Settings")]
     [SerializeField] private LayerMask groundLayer;
@@ -24,34 +24,33 @@ public class PlayerController : MonoBehaviour
     [SerializeField] private float groundCheckDepthOffset = 0.45f;
 
     [Header("Snapping Settings")]
-    public float snapThreshold = 0.1f; // How close the jump needs to be to a target for snapping
-    public float snapIncrement = 1.0f; // Snap to nearest whole number or custom increment (e.g., 0.5)
+    public float snapThreshold = 0.1f; 
+    public float snapIncrement = 1.0f; 
 
     [Header("Death Settings")]
-    public GameObject deathParticlePrefab;  // Assign a particle prefab here.
-    public float deathDelay = 2.5f;         // Delay before calling OnPlayerDeath.
-    [SerializeField] private AudioClip deathSoundClip; // Assign a death sound effect.
-    [SerializeField] private AudioSource audioSource;  // Player's AudioSource for sound effects.
+    public GameObject deathParticlePrefab;
+    public float deathDelay = 2.5f;    
+    [SerializeField] private AudioClip deathSoundClip; 
+    [SerializeField] private AudioSource audioSource;         
 
     [Header("Readonly Runtime Debug")]
     [SerializeField] private float customGravity;
     [SerializeField] private float initialJumpVelocity;
-    [SerializeField] private float jumpDistance;         // Horizontal distance for landing at same level.
-    [SerializeField] private float jumpDistanceAbove;    // Horizontal distance if landing 1 unit above.
-    [SerializeField] private float jumpDistanceBelow;    // Horizontal distance if landing 1 unit below.
+    [SerializeField] private float jumpDistance;
+    [SerializeField] private float jumpDistanceAbove;
+    [SerializeField] private float jumpDistanceBelow;
 
     private Rigidbody rb;
     private Transform firstChild;
     private bool isJumping = false;
     private bool isDead = false;
-    private float distanceSinceLastTick = 0f;
     private InputAction jumpAction;
-    private float jumpStartZ = 0f; // Track the Z-position at the start of the jump
+    private float jumpStartZ = 0f; // Track Z-position at start of jump
 
     private void Awake()
     {
         rb = GetComponent<Rigidbody>();
-        audioSource = GetComponent<AudioSource>(); // Ensure AudioSource is attached to the player.
+        audioSource = GetComponent<AudioSource>();
 
         if (transform.childCount > 0)
         {
@@ -62,23 +61,12 @@ public class PlayerController : MonoBehaviour
     private void Start()
     {
         UpdateJumpParameters();
+
         PlayerInput playerInput = GetComponent<PlayerInput>();
         if (playerInput != null)
         {
-            // Make sure "Jump" matches the name of the action in your Input Actions asset
             jumpAction = playerInput.actions["Jump"];
-
-            // Subscribe to "performed" so when the user clicks or taps, we can jump
             jumpAction.performed += OnJumpPerformed;
-        }
-    }
-
-    private void OnJumpPerformed(InputAction.CallbackContext context)
-    {
-        // Only jump if grounded
-        if (IsGrounded())
-        {
-            Jump();
         }
     }
 
@@ -90,24 +78,26 @@ public class PlayerController : MonoBehaviour
         }
     }
 
+    private void OnJumpPerformed(InputAction.CallbackContext context)
+    {
+        if (IsGrounded())
+        {
+            Jump();
+        }
+    }
+
     private void Update()
     {
-        // Only run movement and input processing if the game is in playing state and the player is not dead.
+        // Run movement/input only if game is playing and player is alive
         if (GameManager.Instance.CurrentState != GameState.Playing || isDead)
             return;
 
-        // BPM-based forward movement.
+        // BPM-based forward movement
         float forwardSpeed = (bpm / 60f) * unitsPerTick;
-        float distThisFrame = forwardSpeed * Time.deltaTime;
-        Vector3 newPosition = rb.position + Vector3.forward * distThisFrame;
-        rb.MovePosition(newPosition);
-        if (distanceSinceLastTick >= unitsPerTick)
-        {
-            distanceSinceLastTick -= unitsPerTick;
-            Debug.Log("Tick!");
-        }
+        float moveThisFrame = forwardSpeed * Time.deltaTime;
+        rb.MovePosition(rb.position + Vector3.forward * moveThisFrame);
 
-        // Debug: Force death.
+        // Debug: Force death
         if (Input.GetKeyDown(KeyCode.R))
         {
             StartCoroutine(HandleDeath());
@@ -118,25 +108,23 @@ public class PlayerController : MonoBehaviour
     {
         if (GameManager.Instance.CurrentState == GameState.Playing && !isDead)
         {
-            // 1. Apply custom gravity
+            // Apply custom gravity
             Vector3 velocity = rb.linearVelocity;
             velocity.y -= customGravity * Time.fixedDeltaTime;
             rb.linearVelocity = velocity;
 
             bool grounded = IsGrounded();
 
-            // 2. If we’re grounded but were in the air, we just landed
+            // Landed check
             if (grounded && isJumping)
             {
                 float distanceJumped = rb.position.z - jumpStartZ;
                 Debug.Log($"Jump distance: {distanceJumped:F2} units");
 
-                // --- General snapping logic ---
-                // Snap to nearest multiple of snapIncrement (e.g., 1.0 or 0.5)
+                // Snap to nearest multiple of snapIncrement if within threshold
                 float snappedDistance = Mathf.Round(distanceJumped / snapIncrement) * snapIncrement;
                 float diff = Mathf.Abs(distanceJumped - snappedDistance);
 
-                // Only snap if within the threshold
                 if (diff < snapThreshold)
                 {
                     Debug.Log($"Snapping to {snappedDistance} (from {distanceJumped:F2})");
@@ -146,55 +134,47 @@ public class PlayerController : MonoBehaviour
                 }
                 else
                 {
-                    Debug.Log($"No snapping: Difference {diff:F2} exceeds threshold {snapThreshold}");
+                    Debug.Log($"No snapping: diff {diff:F2} > {snapThreshold}");
                 }
-                // --- End snapping logic ---
 
                 isJumping = false;
 
-                // 3. Auto-jump if user is still holding jump
+                // Check auto-jump
                 if (jumpAction != null && jumpAction.ReadValue<float>() > 0f)
                 {
                     Jump();
                 }
             }
 
-            // 4. Rotate child (visual) in air vs reset on ground
+            // Rotate visuals if in air
             if (firstChild != null)
             {
                 if (!grounded)
-                {
                     firstChild.Rotate(Vector3.right * rotationSpeed * Time.fixedDeltaTime);
-                }
                 else
-                {
                     firstChild.localRotation = Quaternion.identity;
-                }
             }
         }
     }
 
     private bool IsGrounded()
     {
-        Vector3 originCenter = transform.position + Vector3.up * 0.05f;
-        Vector3 originFront = originCenter + transform.forward * groundCheckDepthOffset;
-        Vector3 originBack = originCenter - transform.forward * groundCheckDepthOffset;
+        Vector3 center = transform.position + Vector3.up * 0.05f;
+        Vector3 front = center + transform.forward * groundCheckDepthOffset;
+        Vector3 back = center - transform.forward * groundCheckDepthOffset;
 
-        bool hitFront = Physics.Raycast(originFront, Vector3.down, groundCheckDistance, groundLayer);
-        bool hitBack = Physics.Raycast(originBack, Vector3.down, groundCheckDistance, groundLayer);
+        bool hitFront = Physics.Raycast(front, Vector3.down, groundCheckDistance, groundLayer);
+        bool hitBack = Physics.Raycast(back, Vector3.down, groundCheckDistance, groundLayer);
 
         return hitFront || hitBack;
     }
 
     private void Jump()
     {
-        // Store the z-position where the jump started
         jumpStartZ = rb.position.z;
-
         Vector3 velocity = rb.linearVelocity;
         velocity.y = initialJumpVelocity;
         rb.linearVelocity = velocity;
-
         isJumping = true;
     }
 
@@ -204,7 +184,7 @@ public class PlayerController : MonoBehaviour
         transform.rotation = Quaternion.identity;
         rb.linearVelocity = Vector3.zero;
         rb.angularVelocity = Vector3.zero;
-        distanceSinceLastTick = 0f;
+
         isJumping = false;
         isDead = false;
 
@@ -219,25 +199,26 @@ public class PlayerController : MonoBehaviour
 
     private void UpdateJumpParameters()
     {
+        // Symmetrical jump: custom gravity and initial velocity
         customGravity = 8f * jumpHeight / (totalJumpTime * totalJumpTime);
         initialJumpVelocity = 4f * jumpHeight / totalJumpTime;
 
+        // For debugging/tracking possible horizontal distances
         float forwardSpeed = (bpm / 60f) * unitsPerTick;
         jumpDistance = forwardSpeed * totalJumpTime;
 
-        float discriminantAbove = initialJumpVelocity * initialJumpVelocity - 2f * customGravity * 1f;
-        jumpDistanceAbove = discriminantAbove >= 0f
-            ? forwardSpeed * (initialJumpVelocity + Mathf.Sqrt(discriminantAbove)) / customGravity
+        float discAbove = initialJumpVelocity * initialJumpVelocity - 2f * customGravity * 1f;
+        jumpDistanceAbove = discAbove >= 0f
+            ? forwardSpeed * (initialJumpVelocity + Mathf.Sqrt(discAbove)) / customGravity
             : 0f;
 
-        float discriminantBelow = initialJumpVelocity * initialJumpVelocity + 2f * customGravity * 1f;
-        jumpDistanceBelow = forwardSpeed * (initialJumpVelocity + Mathf.Sqrt(discriminantBelow)) / customGravity;
+        float discBelow = initialJumpVelocity * initialJumpVelocity + 2f * customGravity * 1f;
+        jumpDistanceBelow = forwardSpeed * (initialJumpVelocity + Mathf.Sqrt(discBelow)) / customGravity;
     }
 
     private void OnCollisionEnter(Collision collision)
     {
-        if (isDead)
-            return;
+        if (isDead) return;
 
         bool collisionCausesDeath = false;
 
@@ -247,6 +228,7 @@ public class PlayerController : MonoBehaviour
         }
         else if (collision.collider.CompareTag("Platform"))
         {
+            // Check angles for side collisions
             const float sideAngleThreshold = 60f;
             foreach (ContactPoint contact in collision.contacts)
             {
@@ -280,7 +262,7 @@ public class PlayerController : MonoBehaviour
             GameManager.Instance.AudioSource.Stop();
         }
 
-        // Play the death sound
+        // Play death sound
         if (audioSource != null && deathSoundClip != null)
         {
             audioSource.PlayOneShot(deathSoundClip);
@@ -292,16 +274,14 @@ public class PlayerController : MonoBehaviour
             firstChild.gameObject.SetActive(false);
         }
 
-        // Spawn the death particle system
+        // Spawn death particle
         if (deathParticlePrefab != null)
         {
             Instantiate(deathParticlePrefab, transform.position, Quaternion.identity);
         }
 
-        // Wait for the specified delay
+        // Wait, then notify GM
         yield return new WaitForSeconds(deathDelay);
-
-        // Notify GameManager of death
         GameManager.Instance.OnPlayerDeath();
     }
 }

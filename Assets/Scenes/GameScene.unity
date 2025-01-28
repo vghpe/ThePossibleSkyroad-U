@@ -31872,6 +31872,10 @@ PrefabInstance:
       propertyPath: m_UseGravity
       value: 0
       objectReference: {fileID: 0}
+    - target: {fileID: 1081834543029365245, guid: 5ed36258fb0160246bcc67afcbd490c6, type: 3}
+      propertyPath: m_Interpolate
+      value: 2
+      objectReference: {fileID: 0}
     - target: {fileID: 1419593433862147025, guid: 5ed36258fb0160246bcc67afcbd490c6, type: 3}
       propertyPath: audioSource
       value: 
@@ -31884,6 +31888,10 @@ PrefabInstance:
       propertyPath: deathSoundClip
       value: 
       objectReference: {fileID: 8300000, guid: 8ad481786f609d64190ffbed5d1e6f13, type: 3}
+    - target: {fileID: 1419593433862147025, guid: 5ed36258fb0160246bcc67afcbd490c6, type: 3}
+      propertyPath: groundCheckDepthOffset
+      value: 0.55
+      objectReference: {fileID: 0}
     - target: {fileID: 6045618582329980539, guid: 5ed36258fb0160246bcc67afcbd490c6, type: 3}
       propertyPath: m_LocalPosition.x
       value: 0
